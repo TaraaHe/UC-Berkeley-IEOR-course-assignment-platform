@@ -138,3 +138,6 @@ credentials/
 
 # Sample data (optional - remove if you want to include sample data)
 sample_data/ 
+
+.streamlit/secrets.toml
+credentials/*.json

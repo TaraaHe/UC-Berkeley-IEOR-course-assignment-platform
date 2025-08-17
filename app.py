@@ -471,7 +471,7 @@ if page == "📊 Student Preferences":
                 # Uses st.secrets["gcp_service_account"] and st.secrets["sheets"]
                 # (spreadsheet_id + worksheet_gid or worksheet_title)
                     preferences_df = read_form_responses(
-                        preferences_df = normalize_preferences_df(preferences_df)
+                        preferences_df = normalize_preferences_df(preferences_df),
                         sheet_name_or_id=st.secrets["sheets"]["spreadsheet_id"],
                         worksheet_gid=st.secrets["sheets"].get("worksheet_gid"),
                         worksheet_title=st.secrets["sheets"].get("worksheet_title")

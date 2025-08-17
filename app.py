@@ -6,6 +6,67 @@ import plotly.graph_objects as go
 from optimizer import run_optimization
 from google_form_reader_updated import read_form_responses
 import datetime
+# ---------------- Helper Functions ----------------
+import re
+
+def normalize_preferences_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Make sure the DF has canonical Program and Student columns."""
+    df = df.copy()
+
+    # 1) Standardize headers (in case they aren't already cleaned)
+    df.columns = (
+        pd.Index(df.columns)
+        .map(lambda x: "" if x is None else str(x))
+        .str.strip().str.replace("\n", " ", regex=False)
+        .str.replace(r"\s+", " ", regex=True)
+    )
+
+    # 2) Locate likely columns
+    prog_col = next((c for c in df.columns if "program" in c.lower()), None)
+    id_col = next(
+        (c for c in df.columns if any(k in c.lower() for k in ["student id", "uc berkeley id", "sid", "ucb id"])),
+        None
+    )
+
+    # 3) Build Program (normalize labels)
+    if prog_col:
+        prog_norm = (
+            df[prog_col].astype(str).str.strip().str.lower()
+            .replace({
+                "master of analytics": "Master of Analytics",
+                "analytics": "Master of Analytics",
+                "m.analytics": "Master of Analytics",
+                "meng": "Master of Engineering",
+                "master of engineering": "Master of Engineering",
+                "ieor meng": "Master of Engineering",
+            })
+        )
+        # Title-case fallback
+        df["Program"] = prog_norm.replace("", pd.NA).fillna(df[prog_col].astype(str).str.strip().str.title())
+    else:
+        df["Program"] = pd.NA
+
+    # 4) Build Student (prefix by program + ID if present; else index)
+    def prefix_for(p):
+        s = str(p).lower()
+        if "analytic" in s: return "A"
+        if "engineer" in s: return "B"
+        return "M"  # generic Masters / unknown
+
+    if id_col:
+        sid = df[id_col].astype(str).str.strip()
+    else:
+        sid = df.index.astype(str)
+
+    df["Student"] = [f"{prefix_for(p)}{sid_i}" for p, sid_i in zip(df["Program"], sid)]
+
+    # 5) Also provide a clean ProgramPrefix if you still want it
+    df["ProgramPrefix"] = df["Program"].astype(str).str.lower().map(
+        lambda s: "A" if "analytic" in s else ("B" if "engineer" in s else "M")
+    )
+
+    return df
+
 # ---------------- Sidebar Page Persistence ----------------
 
 # Sidebar navigation
@@ -410,6 +471,7 @@ if page == "📊 Student Preferences":
                 # Uses st.secrets["gcp_service_account"] and st.secrets["sheets"]
                 # (spreadsheet_id + worksheet_gid or worksheet_title)
                     preferences_df = read_form_responses(
+                        preferences_df = normalize_preferences_df(preferences_df)
                         sheet_name_or_id=st.secrets["sheets"]["spreadsheet_id"],
                         worksheet_gid=st.secrets["sheets"].get("worksheet_gid"),
                         worksheet_title=st.secrets["sheets"].get("worksheet_title")

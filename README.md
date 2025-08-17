@@ -1,12 +1,11 @@
 # UC Berkeley IEOR Course Assignment Platform
 
-A comprehensive web application for optimizing course assignments for IEOR students at UC Berkeley. This platform uses linear programming to efficiently assign students to courses based on their preferences while respecting course capacities and scheduling conflicts.
+A web application that optimizes course assignments for UC Berkeley IEOR Master of Analytics and Master of Engineering students. The platform uses linear programming to assign students to courses based on their preferences while respecting capacity limits and scheduling constraints.
 
 ## 🚀 Features
 
 ### 📊 Student Preferences Management
 - Load student preferences from Google Forms/Sheets
-- Upload preference data via CSV files
 - Interactive visualizations of student preferences
 - Course popularity analysis with utility-based metrics
 
@@ -14,7 +13,6 @@ A comprehensive web application for optimizing course assignments for IEOR stude
 - Upload conflict matrices via CSV
 - Manual schedule entry with intuitive interface
 - Automatic conflict detection from course schedules
-- Visual conflict matrix heatmap
 
 ### 📚 Course Capacity Management
 - Set course capacities via sliders
@@ -25,19 +23,12 @@ A comprehensive web application for optimizing course assignments for IEOR stude
 - Linear programming-based optimization using PuLP
 - Maximizes student utility while respecting constraints
 - Handles course conflicts, capacities, and student limits
-- Real-time optimization results with statistics
 
 ### ✏️ Manual Assignment Editing
 - Manual override capabilities for special cases
 - Add/remove courses from student assignments
 - Iterative re-optimization with manual constraints
 - Comprehensive assignment overview and tracking
-
-### 📊 Advanced Visualizations
-- Student preference distributions
-- Course enrollment analysis
-- Assignment result visualizations
-- Interactive plots with customizable display options
 
 ## 🛠️ Installation
 
@@ -151,21 +142,10 @@ Utility for a course is calculated as: `2^(6 - rank)`
 - Rank 4: 4 utility points
 - Rank 5: 2 utility points
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## 📝 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 👥 Authors
-
-- **Tara He** - *Initial work* - [TaraaHe](https://github.com/TaraaHe)
 
 ## 🙏 Acknowledgments
 
@@ -173,7 +153,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Streamlit team for the amazing web framework
 - PuLP developers for the optimization library
 - Plotly for interactive visualizations
-
-## 📞 Support
-
-For questions or issues, please open an issue on GitHub or contact the development team.

@@ -22,9 +22,11 @@ def run_optimization(preferences_df, conflict_df, capacity_dict):
     model += lpSum(utility.get((s, c), 0) * x[(s, c)] for s in students for c in courses)
 
     # Constraints
+    # Capacity constraints
     for c in courses:
         model += lpSum(x[(s, c)] for s in students) <= capacity_dict.get(c, 0)
 
+    # elective count constraints
     for s in students:
         sel = lpSum(x[(s, c)] for c in courses)
         model += sel <= 4
@@ -33,15 +35,18 @@ def run_optimization(preferences_df, conflict_df, capacity_dict):
         elif s.startswith("M"):
             model += sel >= 2
 
+    # no‐conflicts constraints
     for s in students:
         for c1, c2 in conflict_pairs:
             model += x[(s, c1)] + x[(s, c2)] <= 1
 
+    # A-students forbidden from 242A and 215
     for s in students:
         if s.startswith("A"):
             for forbidden in ["242A", "215"]:
                 model += x[(s, forbidden)] == 0
 
+    # Fairness - each student must get at least 2 of Top 3 choices
     for _, row in preferences_df.iterrows():
         s = row['Student']
         top_courses = []

@@ -1,0 +1,9 @@
+streamlit==1.37.0
+pandas
+numpy
+# pick ONE solver your code uses:
+pulp
+# or: ortools==9.10.4067
+gspread
+gspread_dataframe
+google-auth

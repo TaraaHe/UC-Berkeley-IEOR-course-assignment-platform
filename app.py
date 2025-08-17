@@ -404,14 +404,27 @@ if page == "📊 Student Preferences":
     tab1, tab2 = st.tabs(["📄 Google Form", "📤 Upload CSV"])
     
     with tab1:
-        if st.button("Load Preferences from Google Form"):
-            try:
-                preferences_df = read_form_responses(json_path, sheet_name)
-                st.session_state['preferences_df'] = preferences_df
-                st.success("Loaded and cleaned form responses successfully!")
-            except Exception as e:
-                st.error(f"Failed to load: {e}")
-    
+        if st.button("Load Preferences from Google Form", type="primary"):
+            with st.spinner("Loading from Google Sheets…"):
+                try:
+                # Uses st.secrets["gcp_service_account"] and st.secrets["sheets"]
+                # (spreadsheet_id + worksheet_gid or worksheet_title)
+                    preferences_df = read_form_responses(
+                        sheet_name_or_id=st.secrets["sheets"]["spreadsheet_id"],
+                        worksheet_gid=st.secrets["sheets"].get("worksheet_gid"),
+                        worksheet_title=st.secrets["sheets"].get("worksheet_title")
+                    )
+                    st.session_state["preferences_df"] = preferences_df
+                    st.success(f"Loaded {len(preferences_df):,} responses ✅")
+                    st.dataframe(preferences_df.head(25), use_container_width=True)
+                except Exception as e:
+                    st.error(f"Failed to load: {e}")
+                    st.info("Check: 1) Secrets configured (gcp_service_account + sheets), "
+                    "Check: 1) Secrets configured (gcp_service_account + sheets), "
+                    "2) Sheet shared with the service account email, "
+                    "3) Correct worksheet gid/title."
+                )
+
     with tab2:
         uploaded_file = st.file_uploader("Upload CSV file with preferences", type="csv")
         if uploaded_file:

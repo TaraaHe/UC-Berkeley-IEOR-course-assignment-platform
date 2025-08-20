@@ -1099,13 +1099,29 @@ elif page == "✏️ Manual Editing":
         
         # Final Actions
         st.markdown("---")
-        st.markdown("### 🚀 Final Actions")
-        st.markdown("After editing students, choose your next action:")
         
-        col1, col2, col3 = st.columns(3)
+        # Enhanced Final Actions Section
+        st.markdown("## 🚀 Final Actions")
+        
+        # Status indicator
+        if st.session_state.get('reoptimization_completed', False):
+            st.success("✅ Re-optimization completed! You can view results and visualizations below.")
+        else:
+            st.info("💡 Ready to re-optimize with your manual edits or download current results.")
+        
+        # Action cards with better visual hierarchy
+        st.markdown("### Choose your next action after editing students:")
+        
+        # Create a more visually appealing layout
+        st.markdown("---")
+        
+        # Main action buttons in a card-like layout
+        col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
         
         with col1:
-            if st.button("🔄 Re-run Optimization", type="primary", use_container_width=True):
+            st.markdown("#### 🔄 Re-optimize")
+            st.markdown("*Run optimization with your manual edits*")
+            if st.button("🔄 Re-run Optimization", type="primary", use_container_width=True, help="Re-optimize assignments while respecting your manual changes"):
                 try:
                     with st.spinner("Re-optimizing with manual constraints..."):
                         # Get current enhanced dataframe
@@ -1132,8 +1148,12 @@ elif page == "✏️ Manual Editing":
                         st.session_state['enhanced_result_df'] = updated_enhanced
                         st.success("✅ Re-optimization completed!")
                         
-                        # Show updated results in a table
-                        st.markdown("### 📊 Updated Optimization Results")
+                        # Enhanced results display
+                        st.markdown("---")
+                        st.markdown("## 📊 Updated Optimization Results")
+                        
+                        # Success message with more details
+                        st.balloons()
                         results_data = []
                         original_assignments = st.session_state.get('original_assignments', {})
                         
@@ -1168,18 +1188,46 @@ elif page == "✏️ Manual Editing":
                         results_display = pd.DataFrame(results_data)
                         st.dataframe(results_display, use_container_width=True, hide_index=True)
                         
-                        # Show summary of changes
+                        # Enhanced summary display
                         st.markdown("### 📈 Re-optimization Summary")
                         new_manual_count = len(updated_enhanced[updated_enhanced['Manual_Override'] == True])
                         new_auto_count = len(updated_enhanced[updated_enhanced['Manual_Override'] == False])
                         
-                        col1, col2, col3 = st.columns(3)
+                        # Calculate changes
+                        manual_delta = new_manual_count - manual_count
+                        auto_delta = new_auto_count - auto_count
+                        
+                        col1, col2, col3, col4 = st.columns(4)
                         with col1:
-                            st.metric("Manual Assignments", new_manual_count, delta=new_manual_count - manual_count)
+                            st.metric(
+                                "Manual Assignments", 
+                                new_manual_count, 
+                                delta=manual_delta,
+                                delta_color="normal" if manual_delta >= 0 else "inverse",
+                                help="Students with manual overrides"
+                            )
                         with col2:
-                            st.metric("Auto Assignments", new_auto_count, delta=new_auto_count - auto_count)
+                            st.metric(
+                                "Auto Assignments", 
+                                new_auto_count, 
+                                delta=auto_delta,
+                                delta_color="normal" if auto_delta >= 0 else "inverse",
+                                help="Students assigned by optimization"
+                            )
                         with col3:
-                            st.metric("Total Students", len(updated_enhanced))
+                            st.metric(
+                                "Total Students", 
+                                len(updated_enhanced),
+                                help="Total number of students"
+                            )
+                        with col4:
+                            # Calculate overall satisfaction improvement
+                            total_assignments = sum(len(str(row['AssignedCourses']).split(', ')) for _, row in updated_enhanced.iterrows() if pd.notna(row['AssignedCourses']))
+                            st.metric(
+                                "Total Assignments", 
+                                total_assignments,
+                                help="Total course assignments across all students"
+                            )
                         
                         # Store flag that re-optimization was completed
                         st.session_state['reoptimization_completed'] = True
@@ -1189,13 +1237,14 @@ elif page == "✏️ Manual Editing":
                 except Exception as e:
                     st.error(f"❌ Re-optimization failed: {e}")
         
-        # Show visualizations if re-optimization was completed
+        # Enhanced visualization section
         if st.session_state.get('reoptimization_completed', False):
             st.markdown("---")
-            st.markdown("### 📊 Assignment Result Visualizations")
+            st.markdown("## 📊 Assignment Result Visualizations")
             
-            # Create visualizations dropdown
-            show_viz = st.checkbox("Show assignment visualizations", value=False)
+            # Create visualizations dropdown with better styling
+            with st.expander("📈 View Assignment Visualizations", expanded=False):
+                show_viz = st.checkbox("Show assignment visualizations", value=False)
             
             if show_viz:
                 # Get the last optimization results
@@ -1229,14 +1278,15 @@ elif page == "✏️ Manual Editing":
                     # Create visualizations
                     fig_electives, fig_course_enroll, fig_total_util, fig_avg_util, util_df = create_assignment_visualizations(result_df_for_viz, preferences_df, capacity_dict)
                     
-                    # Individual plot toggles
+                    # Enhanced plot toggles
+                    st.markdown("#### Select visualizations to display:")
                     col1, col2, col3 = st.columns(3)
                     with col1:
-                        show_electives = st.checkbox("Distribution of Electives per Student", value=True)
+                        show_electives = st.checkbox("📊 Electives Distribution", value=True, help="Show distribution of electives per student")
                     with col2:
-                        show_enrollment = st.checkbox("Course Enrollment by Student Prefix", value=True)
+                        show_enrollment = st.checkbox("📈 Course Enrollment", value=True, help="Show course enrollment by student prefix")
                     with col3:
-                        show_avg_util = st.checkbox("Distribution of Average Utility per Student", value=True)
+                        show_avg_util = st.checkbox("📉 Average Utility", value=True, help="Show distribution of average utility per student")
                     
                     # Display selected plots
                     if show_electives:
@@ -1247,6 +1297,8 @@ elif page == "✏️ Manual Editing":
                         st.plotly_chart(fig_avg_util, use_container_width=True)
         
         with col2:
+            st.markdown("#### 📥 Download")
+            st.markdown("*Export your final results*")
             # Download enhanced results
             current_df = st.session_state['enhanced_result_df']
             enhanced_csv = current_df.to_csv(index=False).encode("utf-8")
@@ -1255,11 +1307,14 @@ elif page == "✏️ Manual Editing":
                 enhanced_csv, 
                 "enhanced_assignment_results.csv", 
                 "text/csv",
-                use_container_width=True
+                use_container_width=True,
+                help="Download the final assignment results as a CSV file"
             )
         
         with col3:
-            if st.button("🔄 Reset to Original", use_container_width=True):
+            st.markdown("#### 🔄 Reset")
+            st.markdown("*Revert to original optimization*")
+            if st.button("🔄 Reset to Original", use_container_width=True, help="Reset all manual edits and return to the original optimization results"):
                 # Get the original result_df from the optimization
                 if 'original_result_df' in st.session_state:
                     st.session_state['enhanced_result_df'] = create_enhanced_result_df(st.session_state['original_result_df'], preferences_df)
@@ -1274,7 +1329,10 @@ elif page == "✏️ Manual Editing":
                 st.success("Reset to original optimization results!")
                 st.rerun()
         
-        # Show capacity usage
+        # Enhanced capacity usage section
+        st.markdown("---")
+        
+        # Capacity usage with better styling
         current_df = st.session_state['enhanced_result_df']
         remaining_capacity_total = sum(capacity_dict.values())
         used_capacity = 0
@@ -1282,10 +1340,51 @@ elif page == "✏️ Manual Editing":
             if pd.notna(row['Enroll']) and row['Enroll'].strip():
                 used_capacity += len([c for c in row['Enroll'].split(',') if c.strip()])
         
-        st.markdown("#### 📊 Capacity Usage")
+        # Create a more informative capacity display
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric(
+                "Total Capacity", 
+                f"{remaining_capacity_total:,}",
+                help="Total available capacity across all courses"
+            )
+        
+        with col2:
+            st.metric(
+                "Used Capacity", 
+                f"{used_capacity:,}",
+                delta=f"{used_capacity - 0}",
+                help="Capacity used by manual enrollments"
+            )
+        
+        with col3:
+            progress = used_capacity / remaining_capacity_total if remaining_capacity_total > 0 else 0
+            st.metric(
+                "Usage Rate", 
+                f"{progress:.1%}",
+                help="Percentage of total capacity used"
+            )
+        
+        # Progress bar with better styling
+        st.markdown("#### 📊 Capacity Usage Progress")
         progress = used_capacity / remaining_capacity_total if remaining_capacity_total > 0 else 0
-        st.progress(progress)
-        st.caption(f"Used: {used_capacity} / {remaining_capacity_total} total capacity ({progress:.1%})")
+        
+        # Color-coded progress bar
+        if progress < 0.5:
+            progress_color = "green"
+        elif progress < 0.8:
+            progress_color = "orange"
+        else:
+            progress_color = "red"
+        
+        st.progress(progress, text=f"Used: {used_capacity:,} / {remaining_capacity_total:,} ({progress:.1%})")
+        
+        # Additional capacity insights
+        if used_capacity > 0:
+            st.info(f"💡 **Capacity Insights**: {used_capacity:,} course slots have been manually assigned. This represents {progress:.1%} of the total available capacity.")
+        else:
+            st.info("💡 **Capacity Insights**: No manual enrollments yet. All capacity is available for optimization.")
 
 
 

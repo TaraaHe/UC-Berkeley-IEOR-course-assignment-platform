@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from optimizer import run_optimization
-from google_form_reader_updated import read_form_responses
+from google_form_reader import read_form_responses
 import datetime
 # ---------------- Helper Functions ----------------
 import re
@@ -76,7 +76,11 @@ page = st.sidebar.selectbox(
     ["📊 Student Preferences", "🔀 Conflict Matrix", "📚 Course Capacities", "🚀 Run Optimization", "✏️ Manual Editing"]
 )
 
-# Load form config
+# Google Sheets Configuration
+# Check if Streamlit secrets are configured
+has_secrets = hasattr(st, 'secrets') and 'gcp_service_account' in st.secrets and 'sheets' in st.secrets
+
+# Load form config (legacy fallback)
 json_path = "credentials/service_account.json"
 sheet_name = "IEOR_Preferences"
 
@@ -465,27 +469,81 @@ if page == "📊 Student Preferences":
     tab1, tab2 = st.tabs(["📄 Google Form", "📤 Upload CSV"])
     
     with tab1:
-        if st.button("Load Preferences from Google Form", type="primary"):
-            with st.spinner("Loading from Google Sheets…"):
-                try:
-                # Uses st.secrets["gcp_service_account"] and st.secrets["sheets"]
-                # (spreadsheet_id + worksheet_gid or worksheet_title)
-                    preferences_df = read_form_responses(
-                        preferences_df = normalize_preferences_df(preferences_df),
-                        sheet_name_or_id=st.secrets["sheets"]["spreadsheet_id"],
-                        worksheet_gid=st.secrets["sheets"].get("worksheet_gid"),
-                        worksheet_title=st.secrets["sheets"].get("worksheet_title")
-                    )
-                    st.session_state["preferences_df"] = preferences_df
-                    st.success(f"Loaded {len(preferences_df):,} responses ✅")
-                    st.dataframe(preferences_df.head(25), use_container_width=True)
-                except Exception as e:
-                    st.error(f"Failed to load: {e}")
-                    st.info("Check: 1) Secrets configured (gcp_service_account + sheets), "
-                    "Check: 1) Secrets configured (gcp_service_account + sheets), "
-                    "2) Sheet shared with the service account email, "
-                    "3) Correct worksheet gid/title."
-                )
+        # Check if secrets are configured
+        if not has_secrets:
+            st.warning("⚠️ Google Sheets not configured")
+            st.info("""
+            To use Google Forms integration, you need to configure Streamlit secrets:
+            
+            1. Create a `.streamlit/secrets.toml` file
+            2. Add your Google Cloud service account credentials
+            3. Add your Google Sheets configuration
+            
+            For now, please use the CSV upload option below.
+            """)
+            
+            # Legacy option for users with JSON file
+            if st.checkbox("I have a service account JSON file"):
+                json_file = st.file_uploader("Upload service account JSON file", type="json")
+                sheet_id_input = st.text_input("Enter Google Sheet ID or name", placeholder="e.g., 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms")
+                
+                if json_file and sheet_id_input:
+                    if st.button("Load with JSON file", type="secondary"):
+                        with st.spinner("Loading from Google Sheets…"):
+                            try:
+                                # Save uploaded JSON temporarily
+                                import tempfile
+                                import os
+                                
+                                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp_file:
+                                    tmp_file.write(json_file.getvalue().decode('utf-8'))
+                                    temp_json_path = tmp_file.name
+                                
+                                preferences_df = read_form_responses(
+                                    json_key_path=temp_json_path,
+                                    sheet_name=sheet_id_input
+                                )
+                                
+                                # Clean up temp file
+                                os.unlink(temp_json_path)
+                                
+                                if preferences_df is not None:
+                                    # Normalize the preferences dataframe
+                                    preferences_df = normalize_preferences_df(preferences_df)
+                                    st.session_state["preferences_df"] = preferences_df
+                                    st.success(f"Loaded {len(preferences_df):,} responses ✅")
+                                    st.dataframe(preferences_df.head(25), use_container_width=True)
+                                else:
+                                    st.error("Failed to load data from Google Sheets")
+                            except Exception as e:
+                                st.error(f"Failed to load: {e}")
+                                st.info("Please check your JSON file and sheet ID")
+        else:
+            if st.button("Load Preferences from Google Form", type="primary"):
+                with st.spinner("Loading from Google Sheets…"):
+                    try:
+                        preferences_df = read_form_responses(
+                            sheet_name_or_id=st.secrets["sheets"]["spreadsheet_id"],
+                            worksheet_gid=st.secrets["sheets"].get("worksheet_gid"),
+                            worksheet_title=st.secrets["sheets"].get("worksheet_title")
+                        )
+                        
+                        if preferences_df is not None:
+                            # Normalize the preferences dataframe
+                            preferences_df = normalize_preferences_df(preferences_df)
+                            st.session_state["preferences_df"] = preferences_df
+                            st.success(f"Loaded {len(preferences_df):,} responses ✅")
+                            st.dataframe(preferences_df.head(25), use_container_width=True)
+                        else:
+                            st.error("Failed to load data from Google Sheets")
+                    except Exception as e:
+                        st.error(f"Failed to load: {e}")
+                        st.info("""
+                        Please check:
+                        1. Google Cloud service account is properly configured
+                        2. Google Sheet is shared with the service account email
+                        3. Correct spreadsheet ID and worksheet configuration
+                        """)
 
     with tab2:
         uploaded_file = st.file_uploader("Upload CSV file with preferences", type="csv")

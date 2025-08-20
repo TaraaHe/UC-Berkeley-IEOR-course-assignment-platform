@@ -6,6 +6,59 @@ import plotly.graph_objects as go
 from optimizer import run_optimization
 from google_form_reader import read_form_responses
 import datetime
+
+# Custom CSS for better layout and styling
+st.set_page_config(
+    page_title="UC Berkeley IEOR Course Assignment Platform",
+    page_icon="🎯",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS
+st.markdown("""
+<style>
+    .main {
+        padding: 2rem;
+    }
+    .stButton > button {
+        width: 100%;
+        border-radius: 8px;
+        border: 2px solid #e0e0e0;
+        transition: all 0.3s ease;
+    }
+    .stButton > button:hover {
+        border-color: #4CAF50;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .stMetric {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+    .stProgress > div > div > div {
+        background-color: #4CAF50;
+    }
+    .stExpander {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    .stDataFrame {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+    }
+    h1, h2, h3 {
+        color: #2c3e50;
+        margin-bottom: 1rem;
+    }
+    .stAlert {
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+</style>
+""", unsafe_allow_html=True)
 # ---------------- Helper Functions ----------------
 import re
 
@@ -972,13 +1025,12 @@ elif page == "✏️ Manual Editing":
             )
             
             # Update editing state when student changes
-            if selected_student != st.session_state['editing_student']:
+            if selected_student != st.session_state.get('editing_student', None):
                 st.session_state['editing_student'] = selected_student
                 current_row = enhanced_df[enhanced_df['Student'] == selected_student].iloc[0]
                 st.session_state[f'edit_enroll_{selected_student}'] = current_row['Enroll'] if pd.notna(current_row['Enroll']) else ""
                 st.session_state[f'edit_drop_{selected_student}'] = current_row['Drop'] if pd.notna(current_row['Drop']) else ""
                 st.session_state[f'edit_override_{selected_student}'] = current_row['Manual_Override'] if pd.notna(current_row['Manual_Override']) else False
-                st.rerun()
             
             # Get current data for selected student
             current_row = enhanced_df[enhanced_df['Student'] == selected_student].iloc[0]
@@ -1085,11 +1137,10 @@ elif page == "✏️ Manual Editing":
                 st.session_state['recent_updates'].append(f"Cleared edits for {selected_student}")
                 
                 st.success(f"🗑️ Cleared all edits for {selected_student}")
-                st.rerun()
         
         with col3_btn:
             if st.button("🔄 Refresh Overview"):
-                st.rerun()
+                st.success("Overview refreshed!")
         
         # Show recent updates
         if 'recent_updates' in st.session_state and st.session_state['recent_updates']:
@@ -1148,94 +1199,98 @@ elif page == "✏️ Manual Editing":
                         st.session_state['enhanced_result_df'] = updated_enhanced
                         st.success("✅ Re-optimization completed!")
                         
-                        # Enhanced results display
-                        st.markdown("---")
-                        st.markdown("## 📊 Updated Optimization Results")
-                        
-                        # Success message with more details
-                        st.balloons()
-                        results_data = []
-                        original_assignments = st.session_state.get('original_assignments', {})
-                        
-                        for _, row in updated_enhanced.iterrows():
-                            # Get the very first original assignment
-                            original_assignment = original_assignments.get(row['Student'], row['AssignedCourses'])
-                            original_courses = original_assignment.split(', ') if pd.notna(original_assignment) and original_assignment.strip() else []
-                            original_courses = [c.strip() for c in original_courses if c.strip()]
-                            
-                            # Add enrolled courses
-                            final_courses = original_courses.copy()
-                            if pd.notna(row['Enroll']) and row['Enroll'].strip():
-                                enroll_courses = [c.strip() for c in row['Enroll'].split(',') if c.strip()]
-                                final_courses.extend(enroll_courses)
-                            
-                            # Remove dropped courses
-                            if pd.notna(row['Drop']) and row['Drop'].strip():
-                                drop_courses = [c.strip() for c in row['Drop'].split(',') if c.strip()]
-                                final_courses = [c for c in final_courses if c not in drop_courses]
-                            
-                            # Remove duplicates
-                            final_courses = list(set(final_courses))
-                            
-                            results_data.append({
-                                'Student ID': row['Student'],
-                                'UC Berkeley ID': row['UC_Berkeley_ID'],
-                                'Final Assignment': ', '.join(final_courses) if final_courses else 'No courses',
-                                'Manually Edited': 'Yes' if row['Manual_Override'] else 'No',
-                                'Original Assignment': original_assignment
-                            })
-                        
-                        results_display = pd.DataFrame(results_data)
-                        st.dataframe(results_display, use_container_width=True, hide_index=True)
-                        
-                        # Enhanced summary display
-                        st.markdown("### 📈 Re-optimization Summary")
-                        new_manual_count = len(updated_enhanced[updated_enhanced['Manual_Override'] == True])
-                        new_auto_count = len(updated_enhanced[updated_enhanced['Manual_Override'] == False])
-                        
-                        # Calculate changes
-                        manual_delta = new_manual_count - manual_count
-                        auto_delta = new_auto_count - auto_count
-                        
-                        col1, col2, col3, col4 = st.columns(4)
-                        with col1:
-                            st.metric(
-                                "Manual Assignments", 
-                                new_manual_count, 
-                                delta=manual_delta,
-                                delta_color="normal" if manual_delta >= 0 else "inverse",
-                                help="Students with manual overrides"
-                            )
-                        with col2:
-                            st.metric(
-                                "Auto Assignments", 
-                                new_auto_count, 
-                                delta=auto_delta,
-                                delta_color="normal" if auto_delta >= 0 else "inverse",
-                                help="Students assigned by optimization"
-                            )
-                        with col3:
-                            st.metric(
-                                "Total Students", 
-                                len(updated_enhanced),
-                                help="Total number of students"
-                            )
-                        with col4:
-                            # Calculate overall satisfaction improvement
-                            total_assignments = sum(len(str(row['AssignedCourses']).split(', ')) for _, row in updated_enhanced.iterrows() if pd.notna(row['AssignedCourses']))
-                            st.metric(
-                                "Total Assignments", 
-                                total_assignments,
-                                help="Total course assignments across all students"
-                            )
-                        
                         # Store flag that re-optimization was completed
                         st.session_state['reoptimization_completed'] = True
                         st.session_state['last_optimization_results'] = updated_enhanced
-                        st.rerun()
                         
                 except Exception as e:
                     st.error(f"❌ Re-optimization failed: {e}")
+        
+        # Display re-optimization results if completed
+        if st.session_state.get('reoptimization_completed', False):
+            st.markdown("---")
+            st.markdown("## 📊 Updated Optimization Results")
+            
+            # Success message with more details
+            st.balloons()
+            
+            # Get the updated results
+            updated_enhanced = st.session_state.get('last_optimization_results')
+            if updated_enhanced is not None:
+                results_data = []
+                original_assignments = st.session_state.get('original_assignments', {})
+                
+                for _, row in updated_enhanced.iterrows():
+                    # Get the very first original assignment
+                    original_assignment = original_assignments.get(row['Student'], row['AssignedCourses'])
+                    original_courses = original_assignment.split(', ') if pd.notna(original_assignment) and original_assignment.strip() else []
+                    original_courses = [c.strip() for c in original_courses if c.strip()]
+                    
+                    # Add enrolled courses
+                    final_courses = original_courses.copy()
+                    if pd.notna(row['Enroll']) and row['Enroll'].strip():
+                        enroll_courses = [c.strip() for c in row['Enroll'].split(',') if c.strip()]
+                        final_courses.extend(enroll_courses)
+                    
+                    # Remove dropped courses
+                    if pd.notna(row['Drop']) and row['Drop'].strip():
+                        drop_courses = [c.strip() for c in row['Drop'].split(',') if c.strip()]
+                        final_courses = [c for c in final_courses if c not in drop_courses]
+                    
+                    # Remove duplicates
+                    final_courses = list(set(final_courses))
+                    
+                    results_data.append({
+                        'Student ID': row['Student'],
+                        'UC Berkeley ID': row['UC_Berkeley_ID'],
+                        'Final Assignment': ', '.join(final_courses) if final_courses else 'No courses',
+                        'Manually Edited': 'Yes' if row['Manual_Override'] else 'No',
+                        'Original Assignment': original_assignment
+                    })
+                
+                results_display = pd.DataFrame(results_data)
+                st.dataframe(results_display, use_container_width=True, hide_index=True)
+                
+                # Enhanced summary display
+                st.markdown("### 📈 Re-optimization Summary")
+                new_manual_count = len(updated_enhanced[updated_enhanced['Manual_Override'] == True])
+                new_auto_count = len(updated_enhanced[updated_enhanced['Manual_Override'] == False])
+                
+                # Calculate changes
+                manual_delta = new_manual_count - manual_count
+                auto_delta = new_auto_count - auto_count
+                
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric(
+                        "Manual Assignments", 
+                        new_manual_count, 
+                        delta=manual_delta,
+                        delta_color="normal" if manual_delta >= 0 else "inverse",
+                        help="Students with manual overrides"
+                    )
+                with col2:
+                    st.metric(
+                        "Auto Assignments", 
+                        new_auto_count, 
+                        delta=auto_delta,
+                        delta_color="normal" if auto_delta >= 0 else "inverse",
+                        help="Students assigned by optimization"
+                    )
+                with col3:
+                    st.metric(
+                        "Total Students", 
+                        len(updated_enhanced),
+                        help="Total number of students"
+                    )
+                with col4:
+                    # Calculate overall satisfaction improvement
+                    total_assignments = sum(len(str(row['AssignedCourses']).split(', ')) for _, row in updated_enhanced.iterrows() if pd.notna(row['AssignedCourses']))
+                    st.metric(
+                        "Total Assignments", 
+                        total_assignments,
+                        help="Total course assignments across all students"
+                    )
         
         # Enhanced visualization section
         if st.session_state.get('reoptimization_completed', False):
@@ -1327,7 +1382,6 @@ elif page == "✏️ Manual Editing":
                 if 'last_optimization_results' in st.session_state:
                     del st.session_state['last_optimization_results']
                 st.success("Reset to original optimization results!")
-                st.rerun()
         
         # Enhanced capacity usage section
         st.markdown("---")
